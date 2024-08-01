@@ -3,25 +3,34 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, View, Platform } from "react-native";
 import ShoppingList from "./screens/ShoppingList";
 import NotKnown from "./screens/NotKnown";
-import start from "./utils/start";
+import starts from "./utils/Starts";
 export default function App() {
   const [deviceInfo, setDeviceInfo] = useState({
-    knownDevice: false,
-    sessionToken: null,
+    known_device: false,
+    valid_session: false,
   });
   useEffect(() => {
     async function fetchDeivceInfo() {
-      return await start();
+      const data = await starts();
+      setDeviceInfo(data);
+
+      return data;
     }
     fetchDeivceInfo();
   }, []);
-  // useEffect(() => {
-  // console.log(deviceInfo);
-  // }, [deviceInfo]);
+
+  useEffect(() => {
+    console.log(deviceInfo);
+  }, [deviceInfo]);
+
   return (
     <View>
       <Text style={styles.text}>Hello</Text>
-      {deviceInfo.knownDevice ? <ShoppingList /> : <NotKnown />}
+      {deviceInfo.known_device && deviceInfo.valid_session ? (
+        <ShoppingList />
+      ) : (
+        <NotKnown />
+      )}
     </View>
   );
 }

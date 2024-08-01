@@ -1,3 +1,4 @@
+// server/api.js
 const express = require("express");
 const pgp = require("pg-promise")();
 const cn = require("./DatabaseAccess.js");
@@ -146,32 +147,41 @@ app.listen(port, "0.0.0.0", () => {
 });
 
 app.post("/newDevice", async (req, res) => {
-  let deviceToken;
-  do {
-    deviceToken = crypto.randomBytes(20).toString("hex");
+  console.log(`New device`);
+  let device_token;
+  let selectRes;
+  try {
+    do {
+      device_token = crypto.randomBytes(20).toString("hex");
 
-    selectRes = await db.any(
-      `SELECT * FROM device WHERE device_token = '${deviceToken}'`
+      selectRes = await db.any(
+        `SELECT * FROM device WHERE device_token = '${device_token}'`
+      );
+    } while (selectRes.length > 0);
+
+    await db.any(
+      `INSERT INTO device (device_token) VALUES ('${device_token}')`
     );
-  } while (selectRes.length > 0);
 
-  await db.any(`INSERT INTO device (device_token) VALUES ('${deviceToken}')`);
-
-  res.status(200).json({ deviceToken: deviceToken, knownDevice: false });
+    res.status(200).json({ device_token: device_token, known_device: true });
+  } catch (error) {
+    console.error("Error creating new device:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
-app.post("/checkDeviceToken", async (req, res) => {
-  const deviceToken = req.query.deviceToken;
+app.post("/checkdevice_token", async (req, res) => {
+  const device_token = req.query.device_token;
 
   // Check if the token exists in the devices table
   const selectRes = await db.any(
-    `SELECT * FROM device WHERE device_token = '${deviceToken}'`
+    `SELECT * FROM device WHERE device_token = '${device_token}'`
   );
 
   if (selectRes.length > 0) {
-    res.status(200).json({ knownDevice: true });
+    res.status(200).json({ known_device: true });
   } else {
-    res.status(200).json({ knownDevice: false });
+    res.status(200).json({ known_device: false });
   }
 });
 
@@ -188,7 +198,7 @@ app.post("/newSession", async (req, res) => {
 
   await db.any(`INSERT INTO device (device_token) VALUES ('${sessionToken}')`);
 
-  res.status(200).json({ validSession: validSession, validSession: false });
+  res.status(200).json({ valid_session: valid_session, valid_session: false });
 });
 
 app.post("/checkSessionToken", async (req, res) => {
@@ -200,9 +210,9 @@ app.post("/checkSessionToken", async (req, res) => {
   );
 
   if (selectRes.length > 0) {
-    res.status(200).json({ validSession: true });
+    res.status(200).json({ valid_session: true });
   } else {
-    res.status(200).json({ validSession: false });
+    res.status(200).json({ valid_session: false });
   }
 });
 
@@ -231,15 +241,13 @@ app.post("/sessionVerify", async (req, res) => {
 });
 
 app.post("/appStart", async (req, res) => {
-  const knownDeivce = await getKnownDevice(req.query.device_token);
-  // const knownDeivce = await getKnownDevice("dev");
-  // const validSession = await getSessionValidity("se");
-  const validSession = await getSessionValidity(req.query.session_token);
+  const known_device = await getKnownDevice(req.query.device_token);
+  const valid_session = await getSessionValidity(req.query.session_token);
 
   res.json({
-    knownDeivce: knownDeivce,
-    validSession: knownDeivce ? validSession : false,
-    message: knownDeivce && validSession ? "send to list" : "send to log in ",
+    known_device: known_device,
+    valid_session: known_device ? valid_session : false,
+    message: known_device && valid_session ? "send to list" : "send to log in",
   });
 });
 
@@ -249,6 +257,7 @@ async function getKnownDevice(device_token) {
   ]);
   return data.length > 0;
 }
+
 async function getSessionValidity(session_token) {
   const data = await db.any("SELECT * FROM session WHERE session_token = $1", [
     session_token,
